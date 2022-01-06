@@ -6,7 +6,7 @@ from sqlmodel import Session, create_engine, select
 from starlette.middleware.cors import CORSMiddleware
 
 from db import engine, create_db_and_tables
-from models import User, UserResponse, UserUpdate
+from models.models import User, UserResponse, UserUpdate
 
 app = FastAPI()
 
