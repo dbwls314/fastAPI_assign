@@ -361,8 +361,4 @@ zsdoc/data
 
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm,visualstudiocode,vim,macos,linux,zsh
 
-# *.__pycache__
-# *HERO-ADMIN.__pycache__
-# /__pycache__
-# .__pycache__
 __pycache__/*
