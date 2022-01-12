@@ -25,7 +25,7 @@ class UserUpdate(SQLModel):
     id : Optional[str] = None
     username : Optional[str] = None
     email : Optional[str] = None
-    password : Optional[str] = None 
+    password : Optional[str] = None
 
 #--
 
