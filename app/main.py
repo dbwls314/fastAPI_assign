@@ -1,7 +1,10 @@
+from base64 import encode
+from typing import Optional
 import bcrypt,jwt
 from fastapi.param_functions import Depends
 from fastapi.exceptions import HTTPException
 from fastapi import FastAPI, status
+from pydantic.main import BaseModel
 from sqlmodel import Session, select
 from starlette.middleware.cors import CORSMiddleware
 from starlette.status import HTTP_400_BAD_REQUEST
@@ -9,12 +12,7 @@ from starlette.status import HTTP_400_BAD_REQUEST
 from db import engine, create_db_and_tables, SECRET_KEY, ALGORITHM
 from models.models import User, UserUpdate
 
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from passlib.context import CryptContext
-from jose import JWTError
-# from models.models import TokenData, UserInDB, Token
-
-session = Session(bind = engine)
+# session = Session(bind = engine)
 app = FastAPI()
 
 app.add_middleware(
@@ -24,132 +22,45 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # @app.post("/users/signup", status_code=status.HTTP_201_CREATED)
-# def create_user(email: str, password: str):
-#     user = User()
-#     user.email = email
-#     user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode() 
-#     session.add(user)
+# def create_user(username:str, email:str, password:str):
+#     print(username)
+#     db_user = User()
+
+#     db_user.username = username
+#     db_user.email = email
+#     db_user.password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode() 
+#     # user.password = password
+#     session.add(db_user)
 #     session.commit()
 #     return {"message" : "create user"}
 
 @app.post("/users/signup", status_code=status.HTTP_201_CREATED)
-def create_user(user:User): 
+def create_user(user:User):
     with Session(engine) as session:
         if session.exec(select(User).filter(User.email == user.email)).first():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "user is exist")
 
-        print(1)
         user.password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode()  
-        print(2)
         session.add(user)
         session.commit()
         return {"message" : "create user"}
 
-# @app.post("/users/signin")
+# @app.post("/users/login")
 # def get_user(email:str, password:str):
-    # with Session(engine) as session:
-    #     if bcrypt.checkpw(password.encode('utf-8'), User.password('utf-8')):
-    #         token = jwt.encode(token, SECRET_KEY, algorithm = ALGORITHM)
-    #     return {"Authorization": token}
-
-
-        # not session.exec(select(User).filter(User.email == email)).first():
-        #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "user not exist")
-        # bcrypt.checkpw(password.encode('ut
-
-# @app.get("/users/{user_id}")
-# def get_user(user_id : int):
+#     print(f"email:{email}")
+#     print(f"password:{password}")
 #     with Session(engine) as session:
-#         user = session.exec(select(User).where(User.id == user_id)).first()
-#         if not user:
-#             raise HTTPException(status_code = 404, detail = "user not exist")
-#         return {"result" : user}
-
-# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")  
-
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-# def verify_password(input_password, hashed_password): #입력받은거, db에 있는거
-#     return pwd_context.verify(input_password, hashed_password) 
-
-# def get_password_hash(password): #입력받은 password
-#     return pwd_context.hash(password)
-
-# def get_user(username:str):
-#     with Session(engine) as session:
-#         db_user = session.exec(select(User)).all()
-
-#         if username in db_user:
-#             user_dict = db_user[username]
-#             return UserInDB(**user_dict)
-            
-# def authenticate_user(username:str, password:str): #-> 사용자 인증하고 반환하는 함수 / 반환값은 user 아니면 False 반환
-#     user = get_user(username)
-#     print(3)
-#     print(f"user : {user}")
-#     # db에 그냥 없는경우
-#     if not user: #-> get_user 함수를 통해서 username이 없으면 false 반환
-#         return False
-#     #db엔 있는데, 해쉬된 비밀번호가 다른경우
-#     print(4)
-#     if not verify_password(password, user.password): #-> 입력받은 비밀번호인 passwrod와 get_user함수에서 db에 username이 있으면 db의 hashed_password를 확인했는데 없으면 false
-#         return False
-#     #db에도 잇고, 해쉬된 비밀번호도 맞은경우
-#     print(5)
-#     print(f"user : {user}")
-#     return user
-
-# def create_access_token(data:dict):
-#     to_encode = data.copy()
-#     print(6)
-#     print(f"data:{data}")
-#     print(f"to_encode: {to_encode}")
-#     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-#     print(7)
-#     return encoded_jwt
-
-# def get_current_user(token : str = Depends(oauth2_scheme)): #-> 위의 함수와 동일하게 token을 받지만 이번 함수에서는 jwt 토큰을 사용 -> 토큰을 복호화해서 검증하고 사용자 반환하기 / 아니면 http error 반환
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     ) 
-#     try:
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
-#         username: str = payload.get("sub")
-
-#         if username is None:
-#             raise credentials_exception
-#         token_data = TokenData(username=username)
-
-#     except JWTError:
-#         raise credentials_exception
-
-#     user = get_user(username=token_data.username)
-
-#     if user is None:
-#         raise credentials_exception
-#     return user
-
-# @app.post("/users/login", response_model=Token)
-# def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-#     print(1)
-#     print(form_data)
-#     user = authenticate_user(form_data.username, form_data.password)
-#     print(2)
-#     print(user)
-#     # if not user:
-#     #     raise HTTPException(
-#     #         status_code=status.HTTP_401_UNAUTHORIZED,
-#     #         detail="incorrect username or password",
-#     #         headers={"WWW-Authenticate" : "Bearer"},
-#     #     )
-
-#     access_token = create_access_token(data = {"sub":user.username})
-#     print(access_token)
-#     return {"access_token": access_token, "token_type":"bearer"}
-
+#         print(1)
+#         db_user = session.exec(select(User).filter(User.email == email, User.password == password)).first()
+#         print(f"db_user:{db_user}")
+#         if not db_user:
+#             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail = "user not exist")
+#         if bcrypt.checkpw(password.encode('utf-8'), db_user.password.encode('utf-8')):
+#             token = jwt.encode({'id' : User.id}, SECRET_KEY, ALGORITHM)
+#         return token
+ 
 @app.patch("/users/{user_id}")
 def update_user(user_id : int, user:UserUpdate):
     with Session(engine) as session:
@@ -185,168 +96,236 @@ def startup_event():
     create_db_and_tables()
 
 
-
-#---------
-# @app.post("/users/login", status_code=HTTP_200_OK)
-# def create_access_token(user:User):
-#     print(1)
-#     to_encode = user.copy()
-#     print(to_encode)
-#     print(2)
-#     with Session(engine) as session:
-#         # db_user = session.exec(select(User).filter(User.password == user.password)).first()
-#         if bcrypt.checkpw(user.password.encode('utf-8'), User.password.encode('utf-8')):
-#             token = jwt.encode(payload = {"id":User.id}, key=SECRET_KEY, algorithm=ALGORITHM)
-#         else:
-#             raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "no ")
-#     print(3)
-#     print(token)
-#     return {"Authorization" : token}
-
-from pydantic.main import BaseModel
+#-------
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from passlib.context import CryptContext
-from jose import JWTError
-from typing import Optional
-# from models.models import TokenData, UserInDB, Token
+from jose import JWTError, jwt
 
-#확인용도의 몫데이터
-fake_users_db = {
-    "johndoe": {
-        "username" : "test1",
-        "email" : "test1@gmail.com",
-        "hashed_password" : "$2b$12$D2jH9kG2sQmCB0XXibC6/.a45dHyHMPX1unWDhswZNB5WFPSYlJmm",
-        # "username": "johndoe",
-        # "full_name": "John Doe",
-        # "email": "johndoe@example.com",
-        # "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
-# def fake_hash_password(password:str): #-> password 받아서 여기 함수에선 "fakehashed"에 입력받은 password 붙여서 출력
+# fake_users_db = {
+#     "johndoe": {
+#         "username": "johndoe",
+#         "full_name": "John Doe",
+#         "email": "johndoe@example.com",
+#         "hashed_password": "fakehashedsecret",
+#         "disabled": False,
+#     },
+#     "alice": {
+#         "username": "alice",
+#         "full_name": "Alice Wonderson",
+#         "email": "alice@example.com",
+#         "hashed_password": "fakehashedsecret2",
+#         "disabled": True,
+#     },
+# }
+
+# fake_users_db = {
+#     "johndoe": {
+#         "username": "johndoe",
+#         "full_name": "John Doe",
+#         "email": "johndoe@example.com",
+#         "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
+#         "disabled": False,
+#     }
+# }
+
+# def fake_hash_password(password: str):
 #     return "fakehashed" + password
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")  #-> bcrypt하는것
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# class Token(BaseModel):
-#     access_token :str
-#     token_type : str
+#fastapi 에서 bearer Token을 이용하는 것
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl ="token")
 
-# class TokenData(BaseModel):
-#     username: Optional[str] = None
-
-# class User(BaseModel): # -> User정보를 불러올 테이블 만들기
+# class User(BaseModel):
 #     username:str
-#     email: Optional[str] = None
-    # full_name: Optional[str] = None
-    # disabled: Optional[bool] = None
+#     email:Optional[str] = None
+#     full_name: Optional[str] = None
+#     disabled: Optional[str] = None
+#     password: Optional[str] = None
 
-# class UserInDB(User): #-> 해당 데이터를 pydantic 모델에 넣는다
-#     hashed_password: str
+class UserInDB(User):
+    hashed_password : str
 
-def verify_password(plain_password, hashed_password): #-> password 확인하는 함수 / 전달받은 비밀번호(plain_password)와 해시되어 저장된 비밀번호(hashed_password) 확인하는것
-    return pwd_context.verify(plain_password, hashed_password) #-> verify는 장고에서의 checkpw와 비슷한 용도 / True, False값으로 반환
+class Token(BaseModel):
+    access_token: str
+    token_type: str
 
-def get_password_hash(password): #-> 사용자로 받은 비밀번호를 해시하는 함수 -> hash를 통해서
-    return pwd_context.hash(password)  #-> 반환값은 해시된 비밀번호가 반환됨
 
-def get_user(db, username : str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+class TokenData(BaseModel):
+    username: Optional[str] = None
 
-def authenticate_user(fake_db, username:str, password:str): #-> 사용자 인증하고 반환하는 함수 / 반환값은 user 아니면 False 반환
-    user = get_user(fake_db, username)
-    #db에 그냥 없는경우
-    if not user: #-> get_user 함수를 통해서 username이 없으면 false 반환
+#6 input_password, hashed_password 인자를 받아서 pwd_context를 통해서 bcrypt함
+# def verify_password(input_password, hashed_password):
+#     # return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+#     return pwd_context.verify(input_password, hashed_password)
+
+
+# def get_password_hash(password):
+#     return pwd_context.hash(password)
+
+#4 username을 인자로 받아서 db에 있는지 확인작업
+# def get_user(username: str):
+#     print(f"username:{username}")
+#     with Session(engine) as session:
+#         # db_user = session.exec(select(User)).all()
+#         user = session.exec(select(User).filter(User.username == username)).first()
+#         # print(f"db_user:{db_user}")
+#         print(f"user:{user}")
+#         if username in user:
+#             user_dict = user[username]
+#             # user_dict = username in session.exec(select(User)).all()[username]
+#     # if username in db:
+#     #     user_dict = db[username]
+#             print(f"user_dict:{user_dict}")
+#             return UserInDB(**user_dict)
+
+#2 username과 password 인자로 받음
+# def authenticate_user(username: str, password: str):
+#     #3 
+#     print(f"username:{username}")
+#     user = get_user(username)
+#     print(f"user:{user}")
+#     if not user:
+#         return False
+#     #5 get_user 통해서 username이 db에 잇다면 user를 password 확인작업
+#     if not verify_password(password, user.hashed_password):
+#         print(f"user.hashed_password:{user.hashed_password}")
+#         return False
+#     #7 비밀번호까지 db확인되면, username 정보가 있는 user을 정보를 받음
+#     return user
+
+# def authenticate_user(username: str, password: str):
+#     #3 
+#     print(f"username:{username}")
+#     with Session(engine) as session:
+#     # db_user = session.exec(select(User)).all()
+#         user = session.exec(select(User).filter(User.username == username)).first()
+#     if not user:
+#         return False
+#     #5 get_user 통해서 username이 db에 잇다면 user를 password 확인작업
+#     if not pwd_context.hash(password):
+#         return False
+#     # if not verify_password(password, user.hashed_password):
+#     #     print(f"user.hashed_password:{user.hashed_password}")
+#     #     return False
+#     #7 비밀번호까지 db확인되면, username 정보가 있는 user을 정보를 받음
+#     return user
+
+# def authenticate_user(username: str, password: str):
+#     print(f"username:{username}")
+#     with Session(engine) as session:
+#         user = session.exec(select(User).filter(User.username == username)).first()
+#     if not user:
+#         return False
+#     if not pwd_context.hash(password):
+#         return False
+#     return user
+
+# def fake_decode_token(token):
+#     user = get_user(fake_users_db, token)
+#     return user
+
+
+# async def get_current_user(token: str = Depends(oauth2_scheme)):
+#     user = fake_decode_token(token)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Invalid authentication credentials",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+#     return user
+
+
+# async def get_current_active_user(current_user: User = Depends(get_current_user)):
+#     if current_user.disabled:
+#         raise HTTPException(status_code=400, detail="Inactive user")
+#     return current_user
+
+
+# def create_access_token(data: dict):
+#     to_encode = data.copy()
+#     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+#     return encoded_jwt
+
+# #token를 발급받은 유저인지 확인하는 방법
+# async def get_current_user(token: str = Depends(oauth2_scheme)):
+#     credentials_exception = HTTPException(
+#         status_code=status.HTTP_401_UNAUTHORIZED,
+#         detail="Could not validate credentials",
+#         headers={"WWW-Authenticate": "Bearer"},
+#     )
+#     try:
+#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+#         username: str = payload.get("sub")
+#         if username is None:
+#             raise credentials_exception
+#         token_data = TokenData(username=username)
+#     except JWTError:
+#         raise credentials_exception
+#     user = get_user(username=token_data.username)
+#     if user is None:
+#         raise credentials_exception
+#     return user
+
+# async def get_current_active_user(current_user: User = Depends(get_current_user)):
+#     if current_user.disabled:
+#         raise HTTPException(status_code=400, detail="Inactive user")
+#     return current_user
+
+@app.post("/token", response_model=Token)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    #1 : authenticate_user
+    user = authenticate_user(form_data.username, form_data.password)
+    print(f"user:{user}")
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+   
+    access_token = create_access_token(data={"username": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+def authenticate_user(username: str, password: str):
+    print(f"username:{username}")
+    with Session(engine) as session:
+        user = session.exec(select(User).filter(User.username == username)).first()
+    if not user:
         return False
-    #db엔 있는데, 해쉬된 비밀번호가 다른경우
-    if not verify_password(password, user.hashed_password): #-> 입력받은 비밀번호인 passwrod와 get_user함수에서 db에 username이 있으면 db의 hashed_password를 확인했는데 없으면 false
+    if not pwd_context.hash(password):
         return False
-    #db에도 잇고, 해쉬된 비밀번호도 맞은경우
     return user
 
-def create_access_token(data:dict):
+def create_access_token(data: dict):
     to_encode = data.copy()
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
-# def fake_decode_token(token): 
-#     user = get_user(fake_users_db, token)
-#     # return user
-#     return User(
-#         username=token + "fakedecoded", email="john@gmail.com", full_name="John Doe"
-#     )
-
-# def get_current_user(token: str = Depends(oauth2_scheme)): #-> 현재 유저 정보 불러오는 함수: 토큰을 입력받으면, 그 해당 토큰으로 페이크 디코드 토큰 만들어서 return
-#     user = fake_decode_token(token)                        # -> 그냥 fake_decode_token 함수를 통해서만 반환할뿐
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="invaild authentication",
-#             headers={"www-Authenticate" : "Bearer"}
-#         )
-#     return user
-
-def get_current_user(token : str = Depends(oauth2_scheme)): #-> 위의 함수와 동일하게 token을 받지만 이번 함수에서는 jwt 토큰을 사용 -> 토큰을 복호화해서 검증하고 사용자 반환하기 / 아니면 http error 반환
+#token를 발급받은 유저인지 확인하는 방법
+async def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="could not validate credentials",
+        detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
-    ) 
+    )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
-        username: str = payload.get("sub")
-
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("username")
         if username is None:
             raise credentials_exception
         token_data = TokenData(username=username)
-
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    
+         
+    user = get_user(username=token_data.username) 
     if user is None:
         raise credentials_exception
     return user
 
-def get_current_active_user(current_user:User = Depends(get_current_user)):
-    if current_user.disabled:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="inactive user")
-    return current_user
-
-# @app.post("/token")
-# def login(form_data:OAuth2PasswordRequestForm = Depends()):
-#     user_dict = fake_users_db.get(form_data.username) #-> fake_user_db에서 form_data로 입력받은정보중 username이 있는걸 user_dict 변수에 할당
-#     if not user_dict:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="incorrect username or password")
-#     user = UserInDB(**user_dict) #-> 있다면 UserInDB에있는걸 user변수에 할당
-#     hashed_password = fake_hash_password(form_data.password) #-> 있다면 form_data로 입력받은 password를 fakd_hash_password 함수를 통해 hash_password 변수에 할당
-#     if not hashed_password == user.hashed_password:
-#         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="incoreect username or password")
-#     return {"access_token":user.username, "token_type": "bearer"}
-
-@app.post("/token", response_model=Token)
-def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    print(1)
-    print(form_data)
-
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
-    print(user)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="incorrect username or password",
-            headers={"WWW-Authenticate" : "Bearer"},
-        )
-    print(3)
-    access_token = create_access_token(data = {"sub":user.username})
-    print(4)
-    print(access_token)
-    return {"access_token": access_token, "token_type":"bearer"}
 
 # @app.get("/users/me")
-# def read_users_me(current_user:str = Depends(get_current_user)):
+# async def read_users_me(current_user: User = Depends(get_current_active_user)):
 #     return current_user
-
-
