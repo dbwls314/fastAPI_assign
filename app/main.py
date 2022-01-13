@@ -275,9 +275,7 @@ class TokenData(BaseModel):
 
 @app.post("/token", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    #1 : authenticate_user
     user = authenticate_user(form_data.username, form_data.password)
-    print(f"user:{user}")
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -289,7 +287,6 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     return {"access_token": access_token, "token_type": "bearer"}
 
 def authenticate_user(username: str, password: str):
-    print(f"username:{username}")
     with Session(engine) as session:
         user = session.exec(select(User).filter(User.username == username)).first()
     if not user:
@@ -313,24 +310,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("username")
-        if username is None: # token을 비교했을때, 해당 username이 없으면 error
+        if username is None: 
             raise credentials_exception     
-        # token_data = TokenData(username=username)
+        token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    
-
-    # with Session(engine) as session:
-    #     user = session.exec(select(User).filter(User.username == username)).first()
-    # if user in None:
-    #     raise credentials_exception
-    # return user
-
-    # user = get_user(username=username) 
-    # if user is None:
-    #     raise credentials_exception
-    # return user
-
+    with Session(engine) as session:
+        user = session.exec(select(User).filter(User.username == token_data.username)).first()
+    if user in None:
+        raise credentials_exception
+    return user
 
 # @app.get("/users/me")
 # async def read_users_me(current_user: User = Depends(get_current_active_user)):
