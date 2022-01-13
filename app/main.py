@@ -313,17 +313,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("username")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
+        if username is None: # token을 비교했을때, 해당 username이 없으면 error
+            raise credentials_exception     
+        # token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
     
-         
-    user = get_user(username=token_data.username) 
-    if user is None:
-        raise credentials_exception
-    return user
+
+    # with Session(engine) as session:
+    #     user = session.exec(select(User).filter(User.username == username)).first()
+    # if user in None:
+    #     raise credentials_exception
+    # return user
+
+    # user = get_user(username=username) 
+    # if user is None:
+    #     raise credentials_exception
+    # return user
 
 
 # @app.get("/users/me")
