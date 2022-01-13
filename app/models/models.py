@@ -1,7 +1,6 @@
 from typing import Optional
 from pydantic.main import BaseModel
 from sqlmodel import Field, SQLModel
-
 from sqlalchemy import UniqueConstraint
 
 class UserBase(SQLModel):
@@ -18,9 +17,6 @@ class User(UserBase, table=True):
     email : str = Field(regex = "[a-zA-Z0-9+-_.]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+") 
     password : str = Field(nullable=False, max_length = 300, regex = "(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}") 
 
-#     class Config:
-#         orm_mode=True
-
 class UserResponse(UserBase):  
     id: str
 
@@ -30,9 +26,6 @@ class UserUpdate(SQLModel):
     email : Optional[str] = None
     password : Optional[str] = None
 
-
-#--
-
 class Token(BaseModel):
     access_token :str
     token_type : str
@@ -40,15 +33,12 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-# class User(BaseModel): # -> User정보를 불러올 테이블 만들기
-#     username:str
-#     email: Optional[str] = None
-#     full_name: Optional[str] = None
-#     disabled: Optional[bool] = None
-
-class UserInDB(User): #-> 해당 데이터를 pydantic 모델에 넣는다
+class UserInDB(User):
     hashed_password: str
-#--
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 class Account(SQLModel, table=True):
     __tablename__ = 'accounts'
