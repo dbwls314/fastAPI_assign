@@ -4,7 +4,7 @@ import bcrypt,jwt
 from fastapi.param_functions import Depends
 from fastapi.exceptions import HTTPException
 from fastapi import FastAPI, status
-from pydantic.main import BaseModel
+from pydantic import BaseModel
 from sqlmodel import Session, select
 from starlette.middleware.cors import CORSMiddleware
 from starlette.status import HTTP_400_BAD_REQUEST
@@ -154,128 +154,15 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-#6 input_password, hashed_password 인자를 받아서 pwd_context를 통해서 bcrypt함
-# def verify_password(input_password, hashed_password):
-#     # return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
-#     return pwd_context.verify(input_password, hashed_password)
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 
-# def get_password_hash(password):
-#     return pwd_context.hash(password)
-
-#4 username을 인자로 받아서 db에 있는지 확인작업
-# def get_user(username: str):
-#     print(f"username:{username}")
-#     with Session(engine) as session:
-#         # db_user = session.exec(select(User)).all()
-#         user = session.exec(select(User).filter(User.username == username)).first()
-#         # print(f"db_user:{db_user}")
-#         print(f"user:{user}")
-#         if username in user:
-#             user_dict = user[username]
-#             # user_dict = username in session.exec(select(User)).all()[username]
-#     # if username in db:
-#     #     user_dict = db[username]
-#             print(f"user_dict:{user_dict}")
-#             return UserInDB(**user_dict)
-
-#2 username과 password 인자로 받음
-# def authenticate_user(username: str, password: str):
-#     #3 
-#     print(f"username:{username}")
-#     user = get_user(username)
-#     print(f"user:{user}")
-#     if not user:
-#         return False
-#     #5 get_user 통해서 username이 db에 잇다면 user를 password 확인작업
-#     if not verify_password(password, user.hashed_password):
-#         print(f"user.hashed_password:{user.hashed_password}")
-#         return False
-#     #7 비밀번호까지 db확인되면, username 정보가 있는 user을 정보를 받음
-#     return user
-
-# def authenticate_user(username: str, password: str):
-#     #3 
-#     print(f"username:{username}")
-#     with Session(engine) as session:
-#     # db_user = session.exec(select(User)).all()
-#         user = session.exec(select(User).filter(User.username == username)).first()
-#     if not user:
-#         return False
-#     #5 get_user 통해서 username이 db에 잇다면 user를 password 확인작업
-#     if not pwd_context.hash(password):
-#         return False
-#     # if not verify_password(password, user.hashed_password):
-#     #     print(f"user.hashed_password:{user.hashed_password}")
-#     #     return False
-#     #7 비밀번호까지 db확인되면, username 정보가 있는 user을 정보를 받음
-#     return user
-
-# def authenticate_user(username: str, password: str):
-#     print(f"username:{username}")
-#     with Session(engine) as session:
-#         user = session.exec(select(User).filter(User.username == username)).first()
-#     if not user:
-#         return False
-#     if not pwd_context.hash(password):
-#         return False
-#     return user
-
-# def fake_decode_token(token):
-#     user = get_user(fake_users_db, token)
-#     return user
-
-
-# async def get_current_user(token: str = Depends(oauth2_scheme)):
-#     user = fake_decode_token(token)
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Invalid authentication credentials",
-#             headers={"WWW-Authenticate": "Bearer"},
-#         )
-#     return user
-
-
-# async def get_current_active_user(current_user: User = Depends(get_current_user)):
-#     if current_user.disabled:
-#         raise HTTPException(status_code=400, detail="Inactive user")
-#     return current_user
-
-
-# def create_access_token(data: dict):
-#     to_encode = data.copy()
-#     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-#     return encoded_jwt
-
-# #token를 발급받은 유저인지 확인하는 방법
-# async def get_current_user(token: str = Depends(oauth2_scheme)):
-#     credentials_exception = HTTPException(
-#         status_code=status.HTTP_401_UNAUTHORIZED,
-#         detail="Could not validate credentials",
-#         headers={"WWW-Authenticate": "Bearer"},
-#     )
-#     try:
-#         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-#         username: str = payload.get("sub")
-#         if username is None:
-#             raise credentials_exception
-#         token_data = TokenData(username=username)
-#     except JWTError:
-#         raise credentials_exception
-#     user = get_user(username=token_data.username)
-#     if user is None:
-#         raise credentials_exception
-#     return user
-
-# async def get_current_active_user(current_user: User = Depends(get_current_user)):
-#     if current_user.disabled:
-#         raise HTTPException(status_code=400, detail="Inactive user")
-#     return current_user
-
-@app.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(form_data.username, form_data.password)
+#form을 이용하는 방법 / jwt 방법도 있고, 여러가지 있음
+@app.post("/users/login", response_model=Token)
+async def login_for_access_token(login_request: LoginRequest):
+    user = authenticate_user(email=login_request.email, password=login_request.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -283,21 +170,21 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
    
-    access_token = create_access_token(data={"username": user.username})
+    access_token = create_access_token(email=user.email)
     return {"access_token": access_token, "token_type": "bearer"}
 
-def authenticate_user(username: str, password: str):
+def authenticate_user(email: str, password: str) -> User:
     with Session(engine) as session:
-        user = session.exec(select(User).filter(User.username == username)).first()
+        user = session.exec(select(User).filter(User.email == email)).first()
     if not user:
-        return False
-    if not pwd_context.hash(password):
-        return False
+        return None
+    # if not pwd_context.hash(password):
+    #     return None
     return user
 
-def create_access_token(data: dict):
-    to_encode = data.copy()
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+def create_access_token(email: str):
+    payload = {"email": email}
+    encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 #token를 발급받은 유저인지 확인하는 방법
