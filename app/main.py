@@ -35,7 +35,7 @@ async def login_for_access_token(login_request: LoginRequest):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email",
+            detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
    
@@ -49,7 +49,7 @@ def authenticate_user(email: str, password: str):
 
     if not user:
         return None
-    if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+    if not check_password(password, user.password):
         return None
     return user
 
@@ -57,6 +57,10 @@ def create_access_token(email: str):
     payload = {"email": email}
     encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def check_password(password:str, db_password:str):
+    checkpw = bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8'))
+    return checkpw 
 
 @app.patch("/users/{user_id}")
 def update_user(user_id : int, user:UserUpdate):
@@ -82,11 +86,11 @@ def delete_user(user_id : int):
     with Session(engine) as session:
         user = session.get(User, user_id)
         if not user:
-            raise HTTPException(status_code = status.HTTP_204_NO_CONTENT, detail = "no content")
+            raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "user not exist")
         else:
             session.delete(user)
             session.commit()
-        return {}
+        return status.HTTP_204_NO_CONTENT
 
 @app.on_event("startup")
 def startup_event():
