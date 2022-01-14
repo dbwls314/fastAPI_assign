@@ -1,10 +1,8 @@
-from base64 import encode
 import bcrypt,jwt
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException
 from sqlmodel import Session, select
 from starlette.middleware.cors import CORSMiddleware
-from starlette.status import HTTP_400_BAD_REQUEST
 
 from db import engine, create_db_and_tables, SECRET_KEY, ALGORITHM
 from models.models import User, UserUpdate, Token, LoginRequest
@@ -37,7 +35,7 @@ async def login_for_access_token(login_request: LoginRequest):
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="Incorrect email",
             headers={"WWW-Authenticate": "Bearer"},
         )
    
@@ -48,7 +46,7 @@ async def login_for_access_token(login_request: LoginRequest):
 def authenticate_user(email: str, password: str):
     with Session(engine) as session:
         user = session.exec(select(User).filter(User.email == email)).first()
-        
+
     if not user:
         return None
     if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
