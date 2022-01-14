@@ -1,3 +1,4 @@
+from lib2to3.pytree import Base
 from typing import Optional
 from pydantic.main import BaseModel
 from sqlmodel import Field, SQLModel
@@ -20,8 +21,8 @@ class User(UserBase, table=True):
 class UserResponse(UserBase):  
     id: str
 
-class UpdateUserRequest(SQLModel):
-    id : Optional[str] = None
+class UserUpdate(SQLModel):
+    id : Optional[int] = None
     username : Optional[str] = None
     email : Optional[str] = None
     password : Optional[str] = None
@@ -31,8 +32,8 @@ class Token(BaseModel):
     token_type : str
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
-
+    email: Optional[str] = None
+    
 class UserInDB(User):
     hashed_password: str
 
@@ -47,8 +48,14 @@ class Account(SQLModel, table=True):
     memo : str
     user_id : int = Field(default = None, foreign_key = 'users.id')
 
+class AccountUpdate(SQLModel):
+    id : Optional[int] = None
+    price : Optional[int] = None
+    memo : Optional[str] = None
+
 class Trash(SQLModel, table=True):
     __talename__ = 'trashes'
     id : Optional[int] = Field(default = None, primary_key=True)
     user_id : int = Field(default = None, foreign_key = 'users.id')
     account_id : int = Field(default = None, foreign_key = 'accounts.id')
+
