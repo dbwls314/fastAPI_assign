@@ -47,4 +47,4 @@ def remove_user(user_id : int):
         
 def _hash_passwrod(input_password):
     return bcrypt.hashpw(input_password.encode('utf-8'), bcrypt.gensalt()).decode()
-
+            
