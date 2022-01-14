@@ -20,7 +20,7 @@ class User(UserBase, table=True):
 class UserResponse(UserBase):  
     id: str
 
-class UserUpdate(SQLModel):
+class UpdateUserRequest(SQLModel):
     id : Optional[str] = None
     username : Optional[str] = None
     email : Optional[str] = None

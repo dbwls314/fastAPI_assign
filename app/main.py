@@ -1,11 +1,12 @@
 import bcrypt,jwt
 from fastapi import FastAPI, status
 from fastapi.exceptions import HTTPException
+from typing import Optional
 from sqlmodel import Session, select
 from starlette.middleware.cors import CORSMiddleware
 
 from db import engine, create_db_and_tables, SECRET_KEY, ALGORITHM
-from models.models import User, UserUpdate, Token, LoginRequest
+from models.models import User, UpdateUserRequest, Token, LoginRequest
 
 app = FastAPI()
 
@@ -18,10 +19,10 @@ app.add_middleware(
 )
 
 @app.post("/users/signup", status_code=status.HTTP_201_CREATED)
-def create_user(user:User):
+def create_user(user:User) -> dict:
     with Session(engine) as session:
         if session.exec(select(User).filter(User.email == user.email)).first():
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "user is exist")
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail = "user already exists")
 
         user.password = bcrypt.hashpw(user.password.encode('utf-8'), bcrypt.gensalt()).decode() 
         session.add(user)
@@ -29,9 +30,9 @@ def create_user(user:User):
         session.close()
         return {"message" : "create user"}
  
-@app.post("/users/login", response_model=Token)
-async def login_for_access_token(login_request: LoginRequest):
-    user = authenticate_user(email=login_request.email, password=login_request.password)
+@app.post("/users/login", response_model=Token, status_code=status.HTTP_200_OK)
+async def login_for_access_token(login_request: LoginRequest) -> dict:
+    user = _authenticate_user(email=login_request.email, password=login_request.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -39,46 +40,20 @@ async def login_for_access_token(login_request: LoginRequest):
             headers={"WWW-Authenticate": "Bearer"},
         )
    
-    access_token = create_access_token(email=user.email)
-
+    access_token = _create_access_token(email=user.email)
     return {"access_token": access_token, "token_type": "bearer"}
 
-def authenticate_user(email: str, password: str):
+@app.patch("/users/{user_id}", status_code=status.HTTP_200_OK)
+def update_user(user_id : int, user:UpdateUserRequest) -> dict:
     with Session(engine) as session:
-        user = session.exec(select(User).filter(User.email == email)).first()
-
-    if not user:
-        return None
-    if not check_password(password, user.password):
-        return None
-    return user
-
-def create_access_token(email: str):
-    payload = {"email": email}
-    encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-def check_password(password:str, db_password:str):
-    checkpw = bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8'))
-    return checkpw 
-
-@app.patch("/users/{user_id}")
-def update_user(user_id : int, user:UserUpdate):
-    with Session(engine) as session:
-        db_user = session.exec(select(User).where(User.id == user_id)).one()
+        user = session.exec(select(User).where(User.id == user_id)).one()
         
-        if not db_user:
+        if not user:
             raise HTTPException(status_code = status.HTTP_404_NOT_FOUND, detail = "user not exist")
 
-        if user.email:
-            db_user.email = user.email
-
-        if user.password:
-            db_user.password = user.password
-
-        session.add(db_user) 
+        session.add(user) 
         session.commit()
-        session.refresh(db_user)
+        session.refresh(user)
         return {"message" : "user update"}
 
 @app.delete("/users/{user_id}")
@@ -95,3 +70,23 @@ def delete_user(user_id : int):
 @app.on_event("startup")
 def startup_event():
     create_db_and_tables()
+
+def _authenticate_user(email: str, password: str) -> Optional[User]:
+    with Session(engine) as session:
+        user = session.exec(select(User).filter(User.email == email)).first()
+
+    if not user:
+        return None
+    if not _check_password(password, user.password):
+        return None
+    return user
+
+def _create_access_token(email: str) -> str:
+    payload = {"email": email}
+    encoded_jwt = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+def _check_password(password:str, db_password:str) -> bool:
+    checkpw = bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8'))
+    return checkpw 
+    
