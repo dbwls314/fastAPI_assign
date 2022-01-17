@@ -44,7 +44,7 @@ async def login_for_access_token(login_request: LoginRequest) -> dict:
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.patch("/users/{user_id}", status_code=status.HTTP_200_OK)
-def update_user(user_id : int, user:UpdateUserRequest) -> dict:
+def update_user(user_id : int, user: UpdateUserRequest) -> dict:
     with Session(engine) as session:
         user = session.exec(select(User).where(User.id == user_id)).one()
         
@@ -89,4 +89,4 @@ def _create_access_token(email: str) -> str:
 def _check_password(password:str, db_password:str) -> bool:
     checkpw = bcrypt.checkpw(password.encode('utf-8'), db_password.encode('utf-8'))
     return checkpw 
-    
+

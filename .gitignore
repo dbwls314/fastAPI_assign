@@ -365,4 +365,5 @@ zsdoc/data
 # *HERO-ADMIN.__pycache__
 # /__pycache__
 # .__pycache__
-__pycache__/*
+# __pycache__/*
+.__pycache__
