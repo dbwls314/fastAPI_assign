@@ -10,6 +10,6 @@ def post_account(account:Account, token : str = Depends(get_current_user)):
     return create_account(account=account, token=token) 
 
 @router.patch('/accounts/{account_id}', status_code=status.HTTP_200_OK)
-def patch_account(account:AccountUpdate, token : str = Depends(get_current_user)):
-    return update_account(account=account, token=token)
+def post_account(account:Account, token : dict = Depends(get_current_user)):
+    return create_account(account=account, token=token)   
 
